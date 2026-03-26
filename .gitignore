@@ -1,0 +1,14 @@
+# Environment
+.env
+
+# Generated data (rebuild with: python cli.py --setup)
+data/
+chroma_db/
+bm25_texts.pkl
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
