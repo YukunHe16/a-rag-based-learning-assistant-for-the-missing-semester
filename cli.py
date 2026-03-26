@@ -2,10 +2,11 @@
 Missing Semester RAG Assistant — CLI
 
 Usage:
-  python cli.py                        # interactive mode
-  python cli.py "your question here"   # single-question mode
-  python cli.py --setup                # build vector store (first-time setup)
-  python cli.py --rebuild              # force-rebuild vector store
+  python cli.py                                  # interactive mode
+  python cli.py "your question here"             # single-question mode
+  python cli.py --inspect "your question here"   # show retrieval internals
+  python cli.py --setup                          # build vector store (first-time setup)
+  python cli.py --rebuild                        # force-rebuild vector store
 """
 
 import argparse
@@ -89,21 +90,63 @@ def interactive_mode(vectorstore, chunks, raw_texts) -> None:
         run_query(question, vectorstore, chunks, raw_texts)
 
 
+def print_doc(doc, rank: int) -> None:
+    source = Path(doc.metadata.get("source", "unknown")).name
+    preview = doc.page_content.strip()[:250].replace("\n", " ")
+    print(f"  [{rank}] {source}")
+    print(f"      {preview}...")
+
+
+def run_inspect(question: str, vectorstore, chunks, raw_texts) -> None:
+    import random
+    from retriever import inspect_retrieve
+
+    # 1. Sample chunks
+    print(f"\n{'='*70}")
+    print("SAMPLE CHUNKS (3 random examples from the dataset)")
+    print('='*70)
+    for i, doc in enumerate(random.sample(chunks, 3), 1):
+        print_doc(doc, i)
+        print()
+
+    # 2. Retrieval results
+    results = inspect_retrieve(question, chunks, raw_texts, vectorstore)
+
+    print(f"{'='*70}")
+    print(f"QUERY: {question}")
+    print('='*70)
+
+    print("\n--- BM25 Top-5 (keyword match) ---")
+    for i, doc in enumerate(results["bm25"], 1):
+        print_doc(doc, i)
+
+    print("\n--- Dense Embedding Top-5 (semantic similarity) ---")
+    for i, doc in enumerate(results["dense"], 1):
+        print_doc(doc, i)
+
+    print("\n--- RRF Fused Top-5 (final result) ---")
+    for i, doc in enumerate(results["fused"], 1):
+        print_doc(doc, i)
+    print()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Missing Semester RAG Assistant",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
-  python cli.py                        interactive mode
-  python cli.py "How do I undo a git commit?"
-  python cli.py --setup                first-time setup
-  python cli.py --rebuild              force-rebuild index
+  python cli.py                                  interactive mode
+  python cli.py "How do I undo a git commit?"    single question
+  python cli.py --inspect "How does git work?"   show retrieval internals
+  python cli.py --setup                          first-time setup
+  python cli.py --rebuild                        force-rebuild index
         """,
     )
     parser.add_argument("question", nargs="?", help="question to answer (omit for interactive mode)")
     parser.add_argument("--setup", action="store_true", help="build the vector store")
     parser.add_argument("--rebuild", action="store_true", help="force-rebuild the vector store")
+    parser.add_argument("--inspect", action="store_true", help="show intermediate retrieval results (BM25, dense, fused)")
     args = parser.parse_args()
 
     if args.setup or args.rebuild:
@@ -116,7 +159,12 @@ examples:
 
     vectorstore, chunks, raw_texts = load_resources()
 
-    if args.question:
+    if args.inspect:
+        if not args.question:
+            print("--inspect requires a question. Example: python cli.py --inspect \"How does git work?\"")
+            sys.exit(1)
+        run_inspect(args.question, vectorstore, chunks, raw_texts)
+    elif args.question:
         run_query(args.question, vectorstore, chunks, raw_texts)
     else:
         interactive_mode(vectorstore, chunks, raw_texts)

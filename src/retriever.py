@@ -63,6 +63,41 @@ def hybrid_retrieve(
     return [chunks[i] for i in top_indices]
 
 
+def inspect_retrieve(
+    query: str,
+    chunks: list[Document],
+    raw_texts: list[str],
+    vectorstore: Chroma,
+    top_k: int = TOP_K,
+) -> dict:
+    """
+    Same as hybrid_retrieve but returns intermediate BM25 and dense results
+    separately, for inspection/debugging purposes.
+    """
+    n = len(chunks)
+    retrieve_n = min(n, max(top_k * 3, 20))
+
+    bm25 = build_bm25_index(raw_texts)
+    bm25_scores = bm25.get_scores(tokenize(query))
+    bm25_ranked = sorted(range(n), key=lambda i: bm25_scores[i], reverse=True)[:retrieve_n]
+
+    dense_docs = vectorstore.similarity_search(query, k=retrieve_n)
+    content_to_idx = {chunk.page_content: i for i, chunk in enumerate(chunks)}
+    dense_ranked = []
+    for doc in dense_docs:
+        idx = content_to_idx.get(doc.page_content)
+        if idx is not None:
+            dense_ranked.append(idx)
+
+    fused = rrf_fusion(bm25_ranked, dense_ranked)
+
+    return {
+        "bm25": [chunks[i] for i in bm25_ranked[:top_k]],
+        "dense": [chunks[i] for i in dense_ranked[:top_k]],
+        "fused": [chunks[i] for i in fused[:top_k]],
+    }
+
+
 if __name__ == "__main__":
     import sys
     sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent))

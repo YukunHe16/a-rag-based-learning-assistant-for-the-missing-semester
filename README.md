@@ -39,6 +39,11 @@ python cli.py
 python cli.py "How do I use tmux?"
 ```
 
+**Inspect mode** — show intermediate retrieval results (BM25, dense embedding, and final fused results) for a given question:
+```bash
+python cli.py --inspect "How does git work?"
+```
+
 ## Other Commands
 
 Rebuild the index from scratch (e.g. after updating course materials):
