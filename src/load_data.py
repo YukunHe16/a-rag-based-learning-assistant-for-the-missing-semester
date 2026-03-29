@@ -8,7 +8,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-POSTS_DIR = DATA_DIR / "_posts"
+COURSE_DIRS = [DATA_DIR / "_2020", DATA_DIR / "_2026"]
 REPO_URL = "https://github.com/missing-semester/missing-semester.git"
 
 CHUNK_SIZE = 500
@@ -27,17 +27,17 @@ def clone_repo_if_needed() -> None:
 def load_and_chunk() -> Tuple[list[Document], list[str]]:
     clone_repo_if_needed()
 
-    # The lecture files live in _posts/ as .md files
-    md_dir = str(POSTS_DIR) if POSTS_DIR.exists() else str(DATA_DIR)
-    print(f"[load_data] Loading Markdown files from: {md_dir}")
+    print(f"[load_data] Loading Markdown files from: {COURSE_DIRS}")
 
-    loader = DirectoryLoader(
-        md_dir,
-        glob="**/*.md",
-        loader_cls=UnstructuredMarkdownLoader,
-        show_progress=True,
-    )
-    docs = loader.load()
+    docs = []
+    for course_dir in COURSE_DIRS:
+        loader = DirectoryLoader(
+            str(course_dir),
+            glob="*.md",
+            loader_cls=UnstructuredMarkdownLoader,
+            show_progress=True,
+        )
+        docs.extend(loader.load())
     print(f"[load_data] Loaded {len(docs)} document(s).")
 
     splitter = RecursiveCharacterTextSplitter(
