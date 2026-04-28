@@ -5,7 +5,7 @@ from typing import Tuple
 
 from langchain_community.document_loaders import DirectoryLoader, UnstructuredMarkdownLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 COURSE_DIRS = [DATA_DIR / "_2020", DATA_DIR / "_2026"]

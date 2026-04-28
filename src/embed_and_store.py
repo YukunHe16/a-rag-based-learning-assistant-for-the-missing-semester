@@ -3,7 +3,7 @@ from pathlib import Path
 
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 CHROMA_DIR = str(Path(__file__).parent.parent / "chroma_db")
 BM25_CACHE = Path(__file__).parent.parent / "bm25_texts.pkl"
