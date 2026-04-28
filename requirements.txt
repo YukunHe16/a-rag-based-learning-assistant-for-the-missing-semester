@@ -8,3 +8,7 @@ sentence-transformers
 rank_bm25
 anthropic
 python-dotenv
+ragas>=0.2
+langchain-anthropic
+datasets
+pandas

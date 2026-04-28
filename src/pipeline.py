@@ -3,7 +3,7 @@ from pathlib import Path
 
 import anthropic
 from dotenv import load_dotenv
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
 
 load_dotenv(Path(__file__).parent.parent / ".env")
