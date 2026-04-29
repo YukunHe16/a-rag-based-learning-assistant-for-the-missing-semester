@@ -1,5 +1,5 @@
 from rank_bm25 import BM25Okapi
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
 from sentence_transformers import CrossEncoder
 
@@ -42,16 +42,17 @@ def hybrid_retrieve(
     raw_texts: list[str],
     vectorstore: Chroma,
     top_k: int = TOP_K,
+    rerank_results: bool = True,
 ) -> list[Document]:
     n = len(chunks)
     retrieve_n = min(n, max(top_k * 3, 20))  # retrieve more before fusion
 
-    # BM25 retrieval 
+    # BM25 retrieval
     bm25 = build_bm25_index(raw_texts)
     bm25_scores = bm25.get_scores(tokenize(query))
     bm25_ranked = sorted(range(n), key=lambda i: bm25_scores[i], reverse=True)[:retrieve_n]
 
-    # Dense retrieval 
+    # Dense retrieval
     dense_docs = vectorstore.similarity_search(query, k=retrieve_n)
     content_to_idx = {chunk.page_content: i for i, chunk in enumerate(chunks)}
     dense_ranked = []
@@ -62,11 +63,13 @@ def hybrid_retrieve(
 
     # RRF fusion
     fused = rrf_fusion(bm25_ranked, dense_ranked)
-    
-    # Re-ranking with cross encoder
-    reranked = rerank(query, fused[:retrieve_n], chunks, top_k)
 
-    return [chunks[i] for i in reranked]
+    if rerank_results:
+        top_indices = rerank(query, fused[:retrieve_n], chunks, top_k)
+    else:
+        top_indices = fused[:top_k]
+
+    return [chunks[i] for i in top_indices]
 
 
 def inspect_retrieve(
@@ -96,11 +99,13 @@ def inspect_retrieve(
             dense_ranked.append(idx)
 
     fused = rrf_fusion(bm25_ranked, dense_ranked)
+    reranked = rerank(query, fused[:retrieve_n], chunks, top_k)
 
     return {
         "bm25": [chunks[i] for i in bm25_ranked[:top_k]],
         "dense": [chunks[i] for i in dense_ranked[:top_k]],
         "fused": [chunks[i] for i in fused[:top_k]],
+        "reranked": [chunks[i] for i in reranked],
     }
 
 
