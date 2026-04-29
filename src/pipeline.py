@@ -5,6 +5,8 @@ import anthropic
 from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
+from langchain_classic.retrievers.document_compressors import LLMChainExtractor
+from langchain_anthropic import ChatAnthropic
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -91,6 +93,19 @@ Sources: 2020-01-21-shell-tools.md""",
 ]
 
 
+def compress_chunks(docs: list[Document], query: str) -> list[Document]:
+    # filter out irrelevant sentences in each chunk, use cheapest claude model since its good enoughh
+    llmModel = ChatAnthropic(model="claude-haiku-4-5-20251001", api_key=os.environ["ANTHROPIC_API_KEY"])
+    compressor = LLMChainExtractor.from_llm(llmModel)
+    compressed = compressor.compress_documents(docs, query)
+
+    #if compressor accidentally strips too much/everytging, we just return docs as normal
+    if compressed:
+        return compressed
+    else:
+        return docs
+
+
 def format_context(docs: list[Document]) -> str:
     parts = []
     for i, doc in enumerate(docs, 1):
@@ -105,10 +120,13 @@ def answer(
     raw_texts: list[str],
     vectorstore: Chroma,
     top_k: int = 5,
+    compress: bool = False,
 ) -> dict:
     from retriever import hybrid_retrieve
 
     retrieved = hybrid_retrieve(query, chunks, raw_texts, vectorstore, top_k=top_k)
+    if compress:
+        retrieved = compress_chunks(retrieved, query)
     context = format_context(retrieved)
 
     user_message = f"""Course material excerpts:
