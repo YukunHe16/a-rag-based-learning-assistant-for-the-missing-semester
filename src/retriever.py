@@ -1,10 +1,14 @@
 from rank_bm25 import BM25Okapi
-from langchain_core.documents import Document
+from langchain.schema import Document
 from langchain_community.vectorstores import Chroma
+from sentence_transformers import CrossEncoder
 
 RRF_K = 60  
 TOP_K = 5   # final number of documents to return
 
+# model to use for re ranking after BM25 and dense
+RERANK_MODEL = "BAAI/bge-reranker-base"
+_reranker = None
 
 def tokenize(text: str) -> list[str]:
     return text.lower().split()
@@ -58,9 +62,11 @@ def hybrid_retrieve(
 
     # RRF fusion
     fused = rrf_fusion(bm25_ranked, dense_ranked)
-    top_indices = fused[:top_k]
+    
+    # Re-ranking with cross encoder
+    reranked = rerank(query, fused[:retrieve_n], chunks, top_k)
 
-    return [chunks[i] for i in top_indices]
+    return [chunks[i] for i in reranked]
 
 
 def inspect_retrieve(
@@ -98,6 +104,43 @@ def inspect_retrieve(
     }
 
 
+def get_reranker() -> CrossEncoder:
+    """
+    Load and return the re ranker model.
+    """
+    global _reranker
+    if _reranker is None:
+        print(f"[retriever] Loading re-ranker model: {RERANK_MODEL}")
+        _reranker = CrossEncoder(RERANK_MODEL)
+    return _reranker
+
+def rerank(
+        query: str,
+        candidate_indices: list[int],
+        chunks: list[Document],
+        top_k: int ,
+) -> list[int]:
+    """re rank candidate documents using the cross encoder model
+    returns the top k indices sorted by relevance to the query
+    """
+    # get the reranker model
+    reranker = get_reranker()
+
+    # prepare inputs -> (query, doc) pairs
+    pairs = [(query, chunks[i].page_content) for i in candidate_indices]
+
+    # get relevance scores
+    scores = reranker.predict(pairs)
+
+    # pair scores with indices
+    scored = list(zip(candidate_indices, scores))
+
+    # sort score by descending
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    # return top k indices
+    return [idx for idx, score in scored[:top_k]]
+
 if __name__ == "__main__":
     import sys
     sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent))
@@ -116,3 +159,5 @@ if __name__ == "__main__":
         print(f"[{i}] Source: {source}")
         print(doc.page_content[:200])
         print()
+
+
