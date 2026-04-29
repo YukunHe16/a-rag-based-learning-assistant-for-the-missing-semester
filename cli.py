@@ -124,8 +124,12 @@ def run_inspect(question: str, vectorstore, chunks, raw_texts) -> None:
     for i, doc in enumerate(results["dense"], 1):
         print_doc(doc, i)
 
-    print("\n--- RRF Fused Top-5 (final result) ---")
+    print("\n--- RRF Fused Top-5 ---")
     for i, doc in enumerate(results["fused"], 1):
+        print_doc(doc, i)
+
+    print("\n--- Reranked Top-5 (final result) ---")
+    for i, doc in enumerate(results["reranked"], 1):
         print_doc(doc, i)
     print()
 
