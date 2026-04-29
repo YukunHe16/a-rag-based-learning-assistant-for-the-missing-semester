@@ -7,6 +7,11 @@ from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
 from langchain_classic.retrievers.document_compressors import LLMChainExtractor
 from langchain_anthropic import ChatAnthropic
+from langchain.retrievers.multi_query import MultiQueryRetriever
+from langchain_core.retrievers import BaseRetriever
+from langchain_core.callbacks import CallbackManagerForRetrieverRun
+from pydantic import Field
+from typing import List, Any
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -105,6 +110,17 @@ def compress_chunks(docs: list[Document], query: str) -> list[Document]:
     else:
         return docs
 
+class CustomHybridRetriever(BaseRetriever):
+    chunks: List[Any] = Field(default_factory=list)
+    raw_texts: List[str] = Field(default_factory=list)
+    vectorstore: Any = None
+    top_k: int = 5
+
+    def _get_relevant_documents(
+        self, query: str, *, run_manager: CallbackManagerForRetrieverRun
+    ) -> List[Document]:
+        from retriever import hybrid_retrieve
+        return hybrid_retrieve(query, self.chunks, self.raw_texts, self.vectorstore, top_k=self.top_k)
 
 def format_context(docs: list[Document]) -> str:
     parts = []
@@ -122,9 +138,21 @@ def answer(
     top_k: int = 5,
     compress: bool = False,
 ) -> dict:
-    from retriever import hybrid_retrieve
-
-    retrieved = hybrid_retrieve(query, chunks, raw_texts, vectorstore, top_k=top_k)
+    llmModel = ChatAnthropic(model="claude-haiku-4-5-20251001", api_key=os.environ["ANTHROPIC_API_KEY"])
+    
+    base_retriever = CustomHybridRetriever(
+        chunks=chunks, 
+        raw_texts=raw_texts, 
+        vectorstore=vectorstore, 
+        top_k=top_k
+    )
+    
+    mq_retriever = MultiQueryRetriever.from_llm(
+        retriever=base_retriever, 
+        llm=llmModel
+    )
+    
+    retrieved = mq_retriever.invoke(query)
     if compress:
         retrieved = compress_chunks(retrieved, query)
     context = format_context(retrieved)
