@@ -18,7 +18,6 @@ def get_embeddings() -> HuggingFaceEmbeddings:
         encode_kwargs={"normalize_embeddings": True},
     )
 
-
 def build_vectorstore(chunks: list[Document], raw_texts: list[str]) -> Chroma:
     embeddings = get_embeddings()
     print(f"[embed] Embedding {len(chunks)} chunks and storing in ChromaDB at {CHROMA_DIR} ...")
