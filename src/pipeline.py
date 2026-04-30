@@ -7,7 +7,7 @@ from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
 from langchain_classic.retrievers.document_compressors import LLMChainExtractor
 from langchain_anthropic import ChatAnthropic
-from langchain.retrievers.multi_query import MultiQueryRetriever
+from langchain_classic.retrievers.multi_query import MultiQueryRetriever
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from pydantic import Field
@@ -137,22 +137,25 @@ def answer(
     vectorstore: Chroma,
     top_k: int = 5,
     compress: bool = False,
+    multiquery: bool = False,
 ) -> dict:
-    llmModel = ChatAnthropic(model="claude-haiku-4-5-20251001", api_key=os.environ["ANTHROPIC_API_KEY"])
-    
-    base_retriever = CustomHybridRetriever(
-        chunks=chunks, 
-        raw_texts=raw_texts, 
-        vectorstore=vectorstore, 
-        top_k=top_k
-    )
-    
-    mq_retriever = MultiQueryRetriever.from_llm(
-        retriever=base_retriever, 
-        llm=llmModel
-    )
-    
-    retrieved = mq_retriever.invoke(query)
+    if multiquery:
+        llmModel = ChatAnthropic(model="claude-haiku-4-5-20251001", api_key=os.environ["ANTHROPIC_API_KEY"])
+        base_retriever = CustomHybridRetriever(
+            chunks=chunks,
+            raw_texts=raw_texts,
+            vectorstore=vectorstore,
+            top_k=top_k
+        )
+        mq_retriever = MultiQueryRetriever.from_llm(
+            retriever=base_retriever,
+            llm=llmModel
+        )
+        retrieved = mq_retriever.invoke(query)
+    else:
+        from retriever import hybrid_retrieve
+        retrieved = hybrid_retrieve(query, chunks, raw_texts, vectorstore, top_k=top_k)
+
     if compress:
         retrieved = compress_chunks(retrieved, query)
     context = format_context(retrieved)
