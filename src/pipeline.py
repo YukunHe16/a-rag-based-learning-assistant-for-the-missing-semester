@@ -5,9 +5,9 @@ import anthropic
 from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
-from langchain_classic.retrievers.document_compressors import LLMChainExtractor
+from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain_anthropic import ChatAnthropic
-from langchain_classic.retrievers.multi_query import MultiQueryRetriever
+from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from pydantic import Field

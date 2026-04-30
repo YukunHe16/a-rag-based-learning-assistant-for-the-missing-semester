@@ -1,5 +1,4 @@
 langchain
-langchain-classic
 langchain-community
 langchain-huggingface<1.0
 langchain-chroma<1.0
