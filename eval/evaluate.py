@@ -1,3 +1,4 @@
+import argparse
 import json
 import math
 import os
@@ -45,12 +46,15 @@ def fill_nan_with_retry(df, samples, metric_by_col, max_retries=2):
             df.at[idx, col] = score
 
 
-def build_sample(item: dict, chunks, raw_texts, vectorstore) -> SingleTurnSample:
+def build_sample(item: dict, chunks, raw_texts, vectorstore, *, multiquery, rerank, compress) -> SingleTurnSample:
     result = answer(
         query=item["question"],
         chunks=chunks,
         raw_texts=raw_texts,
         vectorstore=vectorstore,
+        multiquery=multiquery,
+        rerank=rerank,
+        compress=compress,
     )
     return SingleTurnSample(
         user_input=result["question"],
@@ -61,6 +65,14 @@ def build_sample(item: dict, chunks, raw_texts, vectorstore) -> SingleTurnSample
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--multiquery", action="store_true")
+    parser.add_argument("--rerank", action="store_true")
+    parser.add_argument("--compress", action="store_true")
+    parser.add_argument("--label", default="run")
+    args = parser.parse_args()
+
+    print(f"config: multiquery={args.multiquery} rerank={args.rerank} compress={args.compress}")
     print("loading vectorstore and bm25 data")
     vectorstore = load_vectorstore()
     chunks, raw_texts = load_bm25_data()
@@ -73,7 +85,10 @@ def main():
     samples = []
     for i, item in enumerate(eval_items, 1):
         print(f"  {i}/{len(eval_items)}  {item['question']}")
-        samples.append(build_sample(item, chunks, raw_texts, vectorstore))
+        samples.append(build_sample(item, chunks, raw_texts, vectorstore,
+                                    multiquery=args.multiquery,
+                                    rerank=args.rerank,
+                                    compress=args.compress))
 
     ragas_dataset = EvaluationDataset(samples=samples)
 

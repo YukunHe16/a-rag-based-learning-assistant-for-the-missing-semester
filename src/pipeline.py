@@ -115,12 +115,13 @@ class CustomHybridRetriever(BaseRetriever):
     raw_texts: List[str] = Field(default_factory=list)
     vectorstore: Any = None
     top_k: int = 5
+    rerank: bool = True
 
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
     ) -> List[Document]:
         from retriever import hybrid_retrieve
-        return hybrid_retrieve(query, self.chunks, self.raw_texts, self.vectorstore, top_k=self.top_k)
+        return hybrid_retrieve(query, self.chunks, self.raw_texts, self.vectorstore, top_k=self.top_k, rerank_results=self.rerank)
 
 def format_context(docs: list[Document]) -> str:
     parts = []
@@ -137,7 +138,8 @@ def answer(
     vectorstore: Chroma,
     top_k: int = 5,
     compress: bool = False,
-    multiquery: bool = False,
+    multiquery: bool = True,
+    rerank: bool = True,
 ) -> dict:
     if multiquery:
         llmModel = ChatAnthropic(model="claude-haiku-4-5-20251001", api_key=os.environ["ANTHROPIC_API_KEY"])
@@ -145,7 +147,8 @@ def answer(
             chunks=chunks,
             raw_texts=raw_texts,
             vectorstore=vectorstore,
-            top_k=top_k
+            top_k=top_k,
+            rerank=rerank,
         )
         mq_retriever = MultiQueryRetriever.from_llm(
             retriever=base_retriever,
@@ -154,7 +157,7 @@ def answer(
         retrieved = mq_retriever.invoke(query)
     else:
         from retriever import hybrid_retrieve
-        retrieved = hybrid_retrieve(query, chunks, raw_texts, vectorstore, top_k=top_k)
+        retrieved = hybrid_retrieve(query, chunks, raw_texts, vectorstore, top_k=top_k, rerank_results=rerank)
 
     if compress:
         retrieved = compress_chunks(retrieved, query)

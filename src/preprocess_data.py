@@ -14,7 +14,6 @@ def clone_repo_if_needed() -> None:
 
 
 def count_code_blocks(lines) -> int:
-    # Each pair of ``` fences will be considered as one block only
     count = 0
     for line in lines:
         if line.startswith("```"):
@@ -58,8 +57,6 @@ def main() -> None:
             f"{r['file']:<32}  {r['words']:>8,}  {r['chars']:>9,}"
             f"  {r['headings']:>8}  {r['code_blocks']:>10}")
     print(seperator)
-
-    #find totyals and averages
     n = len(rows)
     total_words = sum(r["words"] for r in rows)
     total_chars = sum(r["chars"] for r in rows)
@@ -77,5 +74,5 @@ def main() -> None:
     print(f"Avg code blks/file: {total_code_blocks / n:.1f}")
 
 
-if __name__ == "__main__": #run main
+if __name__ == "__main__":
     main()
