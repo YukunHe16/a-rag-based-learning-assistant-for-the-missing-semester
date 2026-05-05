@@ -1,14 +1,3 @@
-"""
-Missing Semester RAG Assistant — CLI
-
-Usage:
-  python cli.py                                  # interactive mode
-  python cli.py "your question here"             # single-question mode
-  python cli.py --inspect "your question here"   # show retrieval internals
-  python cli.py --setup                          # build vector store (first-time setup)
-  python cli.py --rebuild                        # force-rebuild vector store
-"""
-
 import argparse
 import sys
 import shutil
